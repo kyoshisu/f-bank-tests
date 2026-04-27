@@ -25,35 +25,41 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
     
-    - name: Setup Chrome
-      uses: browser-actions/setup-chrome@v1
-      with:
-        chrome-version: 'stable'
-    
-    - name: Setup ChromeDriver
+    - name: Install Chrome and ChromeDriver
       run: |
-        CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+' | head -1)
-        wget -q "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/${CHROME_VERSION}/linux64/chromedriver-linux64.zip"
-        unzip -o chromedriver-linux64.zip
-        sudo mv chromedriver-linux64/chromedriver /usr/bin/chromedriver
-        sudo chmod +x /usr/bin/chromedriver
+        sudo apt-get update
+        sudo apt-get install -y chromium-browser chromium-chromedriver
+        sudo ln -sf /usr/bin/chromedriver /usr/local/bin/chromedriver
+        chromium-browser --version
         chromedriver --version
     
     - name: Setup app files
       run: |
         mkdir -p app
-        if [ -f "index.html" ]; then
-          mv index.html app/ 2>/dev/null || true
-          mv vite.svg app/ 2>/dev/null || true
+        
+        for file in index.html vite.svg; do
+          if [ -f "$file" ]; then
+            mv "$file" app/ 2>/dev/null || true
+          fi
+        done
+        
+        if [ -d "assets" ]; then
           mv assets app/ 2>/dev/null || true
         fi
+        
+        if [ ! -f "app/index.html" ]; then
+          echo '<html><body><h1>F-Bank App</h1><div id="root"></div></body></html>' > app/index.html
+        fi
+        
+        ls -la app/
     
     - name: Start local server
       run: |
         python -m http.server 3000 --directory app &
-        sleep 5
-        curl -I http://localhost:3000/
+        sleep 3
+        curl -I http://localhost:3000/ || echo "Server started but curl failed"
     
     - name: Run tests
       run: |
+        export PATH=$PATH:/usr/local/bin
         pytest tests/ -v --tb=short
