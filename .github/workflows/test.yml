@@ -30,32 +30,30 @@ jobs:
       with:
         chrome-version: 'stable'
     
-    - name: Download F-Bank app
+    - name: Setup ChromeDriver
       run: |
-        # Скачайте архив с сервисом и распакуйте
-        # ИЛИ скопируйте файлы index.html, index-BUH56GOL.js, index-Dy9zO9yl.css в папку app/
+        CHROME_VERSION=$(google-chrome --version | grep -oE '[0-9]+' | head -1)
+        wget -q "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/${CHROME_VERSION}/linux64/chromedriver-linux64.zip"
+        unzip -o chromedriver-linux64.zip
+        sudo mv chromedriver-linux64/chromedriver /usr/bin/chromedriver
+        sudo chmod +x /usr/bin/chromedriver
+        chromedriver --version
+    
+    - name: Setup app files
+      run: |
         mkdir -p app
-        # ВАЖНО: замените ссылку на реальную ссылку скачивания вашего архива
-        # curl -L "URL_ВАШЕГО_АРХИВА" -o app.zip
-        # unzip app.zip -d app/
-        # А пока создаём заглушку:
-        echo "Place index.html and assets here" > app/README.md
+        if [ -f "index.html" ]; then
+          mv index.html app/ 2>/dev/null || true
+          mv vite.svg app/ 2>/dev/null || true
+          mv assets app/ 2>/dev/null || true
+        fi
     
     - name: Start local server
       run: |
         python -m http.server 3000 --directory app &
-        sleep 3
+        sleep 5
+        curl -I http://localhost:3000/
     
     - name: Run tests
       run: |
         pytest tests/ -v --tb=short
-      continue-on-error: false
-    
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results
-        path: |
-          pytest_output.txt
-          .pytest_cache/
