@@ -1,0 +1,61 @@
+name: F-Bank Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Setup Chrome
+      uses: browser-actions/setup-chrome@v1
+      with:
+        chrome-version: 'stable'
+    
+    - name: Download F-Bank app
+      run: |
+        # Скачайте архив с сервисом и распакуйте
+        # ИЛИ скопируйте файлы index.html, index-BUH56GOL.js, index-Dy9zO9yl.css в папку app/
+        mkdir -p app
+        # ВАЖНО: замените ссылку на реальную ссылку скачивания вашего архива
+        # curl -L "URL_ВАШЕГО_АРХИВА" -o app.zip
+        # unzip app.zip -d app/
+        # А пока создаём заглушку:
+        echo "Place index.html and assets here" > app/README.md
+    
+    - name: Start local server
+      run: |
+        python -m http.server 3000 --directory app &
+        sleep 3
+    
+    - name: Run tests
+      run: |
+        pytest tests/ -v --tb=short
+      continue-on-error: false
+    
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          pytest_output.txt
+          .pytest_cache/
